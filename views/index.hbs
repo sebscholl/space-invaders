@@ -1,0 +1,238 @@
+<a-scene id="scene" physics="debug:true; gravity: 0 0 0" fog="type: exponential; color: #000">
+  <a-camera look-controls position="0 0 0" wasd-controls-enabled="false">
+    <a-cursor material="color:red;">
+      <a-cylinder id="cannon2" position="-1.5 -0.5 0" rotation="90 0 0" radius="0.25" height="3" color="#FFC65D"></a-cylinder>
+      <a-cylinder id="cannon1" position="1.5 -0.5 0" rotation="90 0 0" radius="0.25" height="3" color="#FFC65D"></a-cylinder>
+    </a-cursor>
+  </a-camera>
+
+  <a-curve id="track1">
+      <a-curve-point position="-100 100 -500"></a-curve-point>
+      <a-curve-point position="-200 100 -400"></a-curve-point>
+      <a-curve-point position="-200 -100 -300"></a-curve-point>
+      <a-curve-point position="0 1 -2"></a-curve-point>
+  </a-curve>
+
+  <a-curve id="track2">
+      <a-curve-point position="100 100 -500"></a-curve-point>
+      <a-curve-point position="200 100 -400"></a-curve-point>
+      <a-curve-point position="200 -100 -300"></a-curve-point>
+      <a-curve-point position="0 1 -2"></a-curve-point>
+  </a-curve>
+
+  <a-curve id="track3">
+      <a-curve-point position="-100 -100 -500"></a-curve-point>
+      <a-curve-point position="-200 100 -400"></a-curve-point>
+      <a-curve-point position="-200 100 -300"></a-curve-point>
+      <a-curve-point position="0 1 -2"></a-curve-point>
+  </a-curve>
+
+  <a-curve id="track4">
+      <a-curve-point position="100 -100 -500"></a-curve-point>
+      <a-curve-point position="200 100 -400"></a-curve-point>
+      <a-curve-point position="200 100 -300"></a-curve-point>
+      <a-curve-point position="0 1 -2"></a-curve-point>
+  </a-curve>
+
+  <a-curve id="track5">
+      <a-curve-point position="300 0 -500"></a-curve-point>
+      <a-curve-point position="300 -100 -350"></a-curve-point>
+      <a-curve-point position="200 -100 -200"></a-curve-point>
+      <a-curve-point position="-200 -100 -150"></a-curve-point>
+      <a-curve-point position="3 1 -2"></a-curve-point>
+  </a-curve>
+
+  <a-curve id="track6">
+      <a-curve-point position="-300 0 -500"></a-curve-point>
+      <a-curve-point position="-300 -100 -350"></a-curve-point>
+      <a-curve-point position="-200 -100 -200"></a-curve-point>
+      <a-curve-point position="200 -100 -150"></a-curve-point>
+      <a-curve-point position="-3 1 -2"></a-curve-point>
+  </a-curve>
+
+  <a-curve id="track7">
+      <a-curve-point position="300 0 -500"></a-curve-point>
+      <a-curve-point position="300 100 -350"></a-curve-point>
+      <a-curve-point position="200 100 -200"></a-curve-point>
+      <a-curve-point position="-200 100 -150"></a-curve-point>
+      <a-curve-point position="3 1 -2"></a-curve-point>
+  </a-curve>
+
+  <a-curve id="track8">
+      <a-curve-point position="-300 0 -500"></a-curve-point>
+      <a-curve-point position="-300 100 -350"></a-curve-point>
+      <a-curve-point position="-200 100 -200"></a-curve-point>
+      <a-curve-point position="200 100 -150"></a-curve-point>
+      <a-curve-point position="-3 1 -2"></a-curve-point>
+  </a-curve>
+
+  <!-- Draw the Curve -->
+  <a-draw-curve curveref="#track1" material="shader: line; color: blue;"></a-draw-curve>
+  <a-draw-curve curveref="#track2" material="shader: line; color: blue;"></a-draw-curve>
+  <a-draw-curve curveref="#track3" material="shader: line; color: green;"></a-draw-curve>
+  <a-draw-curve curveref="#track4" material="shader: line; color: green;"></a-draw-curve>
+  <a-draw-curve curveref="#track5" material="shader: line; color: orange;"></a-draw-curve>
+  <a-draw-curve curveref="#track6" material="shader: line; color: orange;"></a-draw-curve>
+  <a-draw-curve curveref="#track7" material="shader: line; color: red;"></a-draw-curve>
+  <a-draw-curve curveref="#track8" material="shader: line; color: red;"></a-draw-curve>
+
+  <a-plane position="0 -1 2" rotation="-90 0 0" width="2" height="4" color="#7BC8A4" static-body></a-plane>
+  <a-sky color="#ECECEC" src="https://vignette.wikia.nocookie.net/steamtradingcards/images/3/3d/Orbital_Gear_Background_Orbital_Gear_Space.jpg/revision/latest?cb=20140828180848"></a-sky>
+</a-scene>
+
+{{#> pageScripts }}
+<script type="text/javascript" charset="utf-8" async defer>
+
+
+</script>
+{{/pageScripts}}
+
+<script type="text/javascript" charset="utf-8" async defer>
+  (function(){
+    var camera  = document.querySelector('[camera]');
+    var scene   = document.getElementById('scene');
+    var cannon1 = document.querySelector('#cannon1');
+    var cannon2 = document.querySelector('#cannon2');
+    
+    AFRAME.registerComponent('invader', {
+      init: function() {
+        this.el.addEventListener('collide', this.hit); 
+      },
+      play: function() {
+        attackPlayer(this.el);
+      },
+      hit: function() {
+        killInvader(this);
+      },      
+      tick: function() {
+        if (this.el.dataset.dead) {
+          this.el.parentNode.removeChild(this.el);
+        }
+      }
+    });
+
+
+    AFRAME.registerComponent('beam', {
+      init: function() {
+        this.data.aliveFor = 0;
+        this.el.addEventListener('collide', this.score);
+      },
+      play: function(evt) {
+        var r = document.querySelector('[camera]').getAttribute('rotation');
+
+        this.el.body.velocity.set(-r.y, r.x, 0);
+        
+        this.el.body.applyImpulse(
+          new CANNON.Vec3(0, 0, -250), 
+          new CANNON.Vec3(0, 0, 0)
+        );
+      },
+      score: function() {
+        this.dataset.hit = true;
+      },
+      tick: function() {
+        if (this.data.aliveFor == 180 || this.el.dataset.hit) {
+          this.el.parentNode.removeChild(this.el);
+        } else {
+          this.data.aliveFor += 1;
+        }
+      }
+    });
+
+    function vect2str(v) {
+      return v.x + ' ' + v.y + ' ' + v.z;
+    }
+
+    function killInvader(invader) {
+        invader.removeAttribute('alongpath');
+        var pos = invader.getAttribute('position');
+        
+        var base = Math.floor(Math.random()*100) + 400; // this will get a number between 1 and 99;
+        var x = base * (Math.floor(Math.random()*2) == 1 ? 1 : -1);
+        var y = base * (Math.floor(Math.random()*2) == 1 ? 1 : -1);
+
+        var death = document.createElement("a-animation");
+        death.setAttribute('attribute', 'position');
+        death.setAttribute('from', vect2str(pos));
+        death.setAttribute('to', `${x} ${y} -1000`);
+        death.setAttribute('dur', '1000');
+
+
+        var spin = document.createElement("a-animation");
+        spin.setAttribute('attribute', 'rotation');
+        spin.setAttribute('to', '360 360 360');
+        spin.setAttribute('fill', 'forwards');
+        spin.setAttribute('repeat', 3);
+        spin.setAttribute('dur', '300');
+
+        function vanishInvader(evt) {
+          this.dataset.dead = true;
+        }
+
+        death.addEventListener('animationend', vanishInvader.bind(invader));
+
+        invader.appendChild(spin);
+        invader.appendChild(death);
+    }
+
+    function attackPlayer(invader) {
+      invader.setAttribute('alongpath', `curve: #track${Math.floor((Math.random() * 8) + 1)}; dur: 10000;`);
+    } 
+
+    function makeBeam(cannon) {
+      var position = cannon.getAttribute('position');
+      // Physical Beam
+      var beam = document.createElement("a-sphere");
+      beam.setAttribute('dynamic-body', true);
+      beam.setAttribute('beam', true);
+      beam.setAttribute('position', '0 -1 0');
+      beam.setAttribute('color', 'crimson');
+      beam.setAttribute('radius', '0.24');
+      // Shooting animation
+      var velo = document.createElement("a-animation");
+      velo.setAttribute('attribute', 'position');
+      velo.setAttribute('to', '0 -500 0');
+      velo.setAttribute('direction', 'normal');
+      velo.setAttribute('dur', '500')
+    
+      beam.appendChild(velo);
+
+      return beam;
+    } 
+    
+    function fire(cannon) {
+      cannon.appendChild(makeBeam(cannon));
+    }
+    
+    function spawnInvader() {
+      var positions = ['-3 3 0', '3 3 0', '-2 2 0', '2 2 0', '-3 1 0' ,'-2 1 0' ,'-1 1 0', '0 1 0', '1 1 0', '2 1 0', '3 1 0', '-4 0 0', '-3 0 0', '-1 0 0', '0 0 0', '1 0 0', '3 0 0', '4 0 0', '-5 -1 0', '-4 -1 0', '-3 -1 0', '-2 -1 0', '-1 -1 0', '0 -1 0', '1 -1 0', '2 -1 0', '3 -1 0', '4 -1 0', '5 -1 0', '-5 -2 0', '-3 -2 0', '-2 -2 0', '-1 -2 0', '0 -2 0', '1 -2 0', '2 -2 0', '3 -2 0', '5 -2 0', '-5 -3 0', '-3 -3 0', '3 -3 0', '5 -3 0', '-2 -4 0', '-1 -4 0', '1 -4 0', '2 -4 0'];
+
+      var invader = document.createElement("a-entity");
+      invader.setAttribute('position', '0 0 -500');
+      invader.setAttribute('static-body', true);
+      invader.setAttribute('invader', true);
+      
+      positions.forEach(function(pos) {
+        var flesh = document.createElement("a-box");
+        flesh.setAttribute('color', 'tomato');
+        flesh.setAttribute('position', pos);
+        flesh.setAttribute('height', '1');
+        flesh.setAttribute('depth', '1');
+        flesh.setAttribute('width', '1');
+        invader.appendChild(flesh);
+      });
+
+      scene.appendChild(invader);
+    }
+
+    function shootGun(evt) {
+
+      if (evt.code == "KeyA") fire(cannon1);
+      if (evt.code == "KeyS") fire(cannon2);
+      if (evt.code == "Space") spawnInvader();
+    };
+
+    document.addEventListener('keypress', shootGun); 
+
+  })();
+</script>
