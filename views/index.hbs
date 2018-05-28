@@ -12,53 +12,139 @@
       }
     });
 
-    AFRAME.registerComponent('game-master', {
+    AFRAME.registerComponent('counter', {
+      schema: { 
+        count: { type: 'number' },
+        text: { type: 'string' }
+      },
+      add: function(number) {
+        this.data.count += number;
+        this.render();
+      },
+      set: function(number) {
+        this.data.count = number;
+        this.render();
+      },
+      render: function() {
+        this.el.setAttribute('value', `${this.data.text}: ${this.data.count}`);
+      }
+    });
+
+    AFRAME.registerComponent('level', {
       schema: {
-        mode: { type: 'string' }
+        level: { type: 'number' }
       },
       init: function() {
-        this.data.level = 0;
-        this.data.score = 0;
-        this.data.lives = 5;
+        this.defineHoard(this.data.level);
       },
-      menu: function(evt) {
+      play: function() {
+        this.spawn(this.data.hoard);
+      },
+      defineHoard: function(level) {
+        this.data.hoard = (level + 1) * 3;
+      },
+      spawn: function(hoard) {
+        var scene = this.el;
+        var invaders = 0;
+        var interval = setInterval(function () {
 
-      },
-      start: function(evt) {
-        this.beginLevel(this.data.level += 1);
-        this.data.mode = 'start';
-      },
-      beginLevel: function(level) {
-        this.spawnInvaders(5);
-      },
-      spawnInvaders: function(count) {
-        var positions = ['-3 3 0', '3 3 0', '-2 2 0', '2 2 0', '-3 1 0' ,'-2 1 0' ,'-1 1 0', '0 1 0', '1 1 0', '2 1 0', '3 1 0', '-4 0 0', '-3 0 0', '-1 0 0', '0 0 0', '1 0 0', '3 0 0', '4 0 0', '-5 -1 0', '-4 -1 0', '-3 -1 0', '-2 -1 0', '-1 -1 0', '0 -1 0', '1 -1 0', '2 -1 0', '3 -1 0', '4 -1 0', '5 -1 0', '-5 -2 0', '-3 -2 0', '-2 -2 0', '-1 -2 0', '0 -2 0', '1 -2 0', '2 -2 0', '3 -2 0', '5 -2 0', '-5 -3 0', '-3 -3 0', '3 -3 0', '5 -3 0', '-2 -4 0', '-1 -4 0', '1 -4 0', '2 -4 0'];
-
-
-        for (var i = 0; i < count; i++) {
           var invader = document.createElement("a-entity");
           invader.setAttribute('position', '0 0 -500');
           invader.setAttribute('static-body', true);
           invader.setAttribute('invader', true);
+          invader.setAttribute('gltf-model', '#invader');
           
-          positions.forEach(function(pos) {
-            var flesh = document.createElement("a-box");
-            flesh.setAttribute('color', 'tomato');
-            flesh.setAttribute('position', pos);
-            flesh.setAttribute('height', '1');
-            flesh.setAttribute('depth', '1');
-            flesh.setAttribute('width', '1');
-            invader.appendChild(flesh);
-          });
+          scene.appendChild(invader);
 
-          this.el.appendChild(invader); 
-        }
-      },
-      over: function(evt) {
-
+           if (++invaders == hoard) {
+               window.clearInterval(interval);
+           }
+        }, 1000);
       },
       tick: function() {
-      
+        if (this.data.hoard == 0) {
+          this.el.removeAttribute('level');;
+          this.el.components['game-master'].nextLevel();
+        }
+      }
+    });
+
+    AFRAME.registerComponent('game-master', {
+      schema: {
+        mode: { type: 'string' },
+        level: { type: 'number' },
+        score: { type: 'number' },
+        lives: { type: 'number' }
+      },
+      init: function() {
+        this.levelCounter = document.getElementById('levelCounter');
+        this.livesCounter = document.getElementById('livesCounter');
+        this.scoreCounter = document.getElementById('scoreCounter');
+      },
+      menu: function(evt) {
+
+      },
+      newGame: function(evt) {
+        this.data.mode = 'play';
+        this.livesCounter.components['counter'].set(this.data.lives);
+        this.nextLevel(this.data.level + 1);
+      },
+      nextLevel: function(level) {
+        if (this.data.mode == 'play') {
+          // Increment the game level
+          ++this.data.level;
+          // Set the Level on the game screen
+          this.levelCounter.components['counter'].set(this.data.level);
+          // Show "LEVEL X" message
+          var text = document.createElement("a-text");
+          text.setAttribute('value', 'LEVEL ' + this.data.level);
+          text.setAttribute('position', '0 0 -3');
+          text.setAttribute('mixin', 'vt323');
+          text.setAttribute('scale', '3 3');
+          // Add text element to DOM
+          this.el.appendChild(text);
+
+          function beginAttack(evt) {
+            text.setAttribute('trash', true);
+            this.el.setAttribute('level', `level:${this.data.level}`);
+          };
+
+          setTimeout(beginAttack.bind(this), 3000);
+        }
+      },
+      gameOver: function(evt) {
+        this.data.mode = "stop";
+
+        this.el.removeAttribute('level');
+
+        document.querySelectorAll('[invader]').forEach(
+          function(invader) {
+            invader.components['invader'].die.bind(invader)();
+          }
+        );
+
+        setTimeout(this.showEndScreen.bind(this), 1000);
+      },
+      scorePoint: function() {
+        this.data.score++
+        this.scoreCounter.components['counter'].set(this.data.score);
+
+      },
+      dockLife: function(evt) {
+        this.livesCounter.components['counter'].set(--this.data.lives);
+        if (this.data.lives <= 0) this.gameOver();
+      },
+      showEndScreen: function() {
+        var text = document.createElement("a-text");
+        text.setAttribute('value', 'GAME OVER\nSCORE ' + this.data.score);
+        text.setAttribute('position', '0 0 -3');
+        text.setAttribute('mixin', 'vt323');
+        text.setAttribute('scale', '3 3');
+
+        this.el.appendChild(text);  
+      },
+      tick: function() {
+
       }
     });
 
@@ -79,6 +165,7 @@
       },
       score: function() {
         this.dataset.hit = true;
+        this.sceneEl.components['game-master'].scorePoint();
       },
       tick: function() {
         if (this.data.aliveFor == 180 || this.el.dataset.hit) {
@@ -95,21 +182,30 @@
       },
       play: function() {
         this.el.setAttribute('alongpath', `curve: #track${Math.floor((Math.random() * 8) + 1)}; dur: 10000;`);
+        this.el.addEventListener('movingended', this.hit);
       },     
       tick: function() {
         if (this.el.dataset.dead) {
+          // Remove the invader from the DOM
           this.el.parentNode.removeChild(this.el);
+          // Mark the hoard as down 1 on the level master
+          if (document.querySelector('[level]')) {
+            document.querySelector('[level]').components.level.data.hoard -= 1;
+          }
         }
       },
-      attack: function() {
-
+      hit: function() {
+        this.sceneEl.components['game-master'].dockLife();
+        this.dataset.dead = true;
       },
       die: function() {
         var invader = this;
+  
         invader.removeAttribute('alongpath');
+
         var pos = invader.getAttribute('position');
         
-        var base = Math.floor(Math.random()*100) + 400; // this will get a number between 1 and 99;
+        var base = Math.floor(Math.random()*100) + 400;
         var x = base * (Math.floor(Math.random()*2) == 1 ? 1 : -1);
         var y = base * (Math.floor(Math.random()*2) == 1 ? 1 : -1);
 
@@ -118,7 +214,6 @@
         death.setAttribute('from', vect2str(pos));
         death.setAttribute('to', `${x} ${y} -1000`);
         death.setAttribute('dur', '1000');
-
 
         var spin = document.createElement("a-animation");
         spin.setAttribute('attribute', 'rotation');
@@ -141,17 +236,53 @@
 </script>
 {{/pageScripts}}
 
-<a-scene id="scene" game-master="mode: menu" physics="debug:true; gravity: 0 0 0" fog="type: exponential; color: #000">
+<a-scene id="scene" game-master="mode:menu;level:0;score:0;lives:5;" physics="debug:false; gravity: 0 0 0" fog="type: exponential; color: #000">
+
   <a-assets>
+    <a-asset-item id="invader" 
+                  src="models/invader.gltf">              
+    </a-asset-item>
+
+    <a-asset-item id="ship" 
+                  src="models/cartoon_spaceship/scene.gltf">              
+    </a-asset-item>
+
+    <img id="sky" 
+         src="https://vignette.wikia.nocookie.net/steamtradingcards/images/3/3d/Orbital_Gear_Background_Orbital_Gear_Space.jpg/revision/latest?cb=20140828180848"
+         preload="true">
+
     <a-mixin id="vt323" 
              text="align:center;font:https://raw.githubusercontent.com/etiennepinchon/aframe-fonts/master/fonts/vt323/VT323-Regular.json;shader:msdf;">          
     </a-mixin>
+
+    <a-mixin id="metal" material="src:url(images/riveted-metal.jpg); color: #696969; roughness: 1; metalness: 0.5"></a-mixin>
+    
+    <a-mixin id="music" 
+             sound="src:url(audio/intro-menu-music.wav);autoplay:true;loop:true;"
+             preload="auto"></a-mixin>
+
+    <a-mixin id="laser" 
+             sound="src:url(audio/laser-shot.wav);autoplay:true;" 
+             material="src:url(images/green-metal.jpg);color:#5CE83C;metalness:1;emissive:#5CE83C;emissiveIntensity:0.75;"
+             preload="auto"></a-mixin>
   </a-assets>
+
+  <a-entity position="0 10 -10" light="type:point; color: #FFF; groundColor: #3C3; intensity: 1"></a-entity>
+
+  <a-sky color="#ECECEC" 
+         src="#sky"
+></a-sky>
 
   <a-camera look-controls position="0 0 0" wasd-controls-enabled="false">
     <a-cursor material="color:red;">
-      <a-cylinder id="cannon2" position="-1.5 -0.5 0" rotation="90 0 0" radius="0.25" height="3" color="#FFC65D"></a-cylinder>
-      <a-cylinder id="cannon1" position="1.5 -0.5 0" rotation="90 0 0" radius="0.25" height="3" color="#FFC65D"></a-cylinder>
+      <a-cylinder mixin="metal" id="cannon2" position="-1.5 -0.5 0" rotation="90 0 0" radius="0.25" height="3" color="#FFC65D">
+        <a-cylinder mixin="metal" radius="0.3" height="0.5" color="#FFC65D"></a-cylinder> 
+        <a-cylinder mixin="metal" radius="0.275" height="0.5" color="#FFC65D" position="0 -1.25 0"></a-cylinder> 
+      </a-cylinder>
+      <a-cylinder mixin="metal" id="cannon1" position="1.5 -0.5 0" rotation="90 0 0" radius="0.25" height="3" color="#FFC65D">
+        <a-cylinder mixin="metal" radius="0.3" height="0.5" color="#FFC65D"></a-cylinder>
+        <a-cylinder mixin="metal" radius="0.275" height="0.5" color="#FFC65D" position="0 -1.25 0"></a-cylinder>
+      </a-cylinder>
     </a-cursor>
   </a-camera>
 
@@ -214,8 +345,38 @@
       <a-curve-point position="200 100 -150"></a-curve-point>
       <a-curve-point position="-3 1 -2"></a-curve-point>
   </a-curve>
-   
-  <a-entity id="menu" position="0 0 -3">
+
+  <a-text id="scoreCounter"
+          value="SCORE: 0"
+          mixin="vt323"
+          color="#5CE83C"
+          rotation="-45 45 0"
+          position="-1.3 -1.5 -0.75"
+          counter="count:0;text:SCORE;">
+          <a-plane height="0.35" width="1.5" position="0 0.175 0" opacity="0.5"></a-plane>   
+  </a-text>
+
+  <a-text id="levelCounter"
+          value="LEVEL: 0"
+          mixin="vt323"
+          color="#5CE83C"
+          rotation="-45 0 0"
+          position="0 -1.5 -1.25"
+          counter="count:0;text:LEVEL;">
+          <a-plane height="0.35" width="1.5" position="0 0.175 0" opacity="0.5"></a-plane>   
+  </a-text>
+
+  <a-text id="livesCounter"
+          value="LIVES: 0"
+          mixin="vt323"
+          color="#5CE83C"
+          rotation="-45 -45 0"
+          position="1.3 -1.5 -0.75"
+          counter="count:0;text:LIVES;">
+          <a-plane height="0.35" width="1.5" position="0 0.175 0" opacity="0.5"></a-plane>   
+  </a-text>
+
+  <a-entity id="menu" position="0 0 -5">
     <a-text value="SPACE"
             mixin="vt323"
             scale="5 5"
@@ -238,7 +399,7 @@
   </a-entity>
 
   <!-- Draw the Curve -->
-  <!--   <a-draw-curve curveref="#track1" material="shader: line; color: blue;"></a-draw-curve>
+<!--     <a-draw-curve curveref="#track1" material="shader: line; color: blue;"></a-draw-curve>
   <a-draw-curve curveref="#track2" material="shader: line; color: blue;"></a-draw-curve>
   <a-draw-curve curveref="#track3" material="shader: line; color: green;"></a-draw-curve>
   <a-draw-curve curveref="#track4" material="shader: line; color: green;"></a-draw-curve>
@@ -247,8 +408,13 @@
   <a-draw-curve curveref="#track7" material="shader: line; color: red;"></a-draw-curve>
   <a-draw-curve curveref="#track8" material="shader: line; color: red;"></a-draw-curve> -->
 
-  <a-plane position="0 -1 2" rotation="-90 0 0" width="2" height="4" color="#7BC8A4" static-body></a-plane>
-  <a-sky color="#ECECEC" src="https://vignette.wikia.nocookie.net/steamtradingcards/images/3/3d/Orbital_Gear_Background_Orbital_Gear_Space.jpg/revision/latest?cb=20140828180848"></a-sky>
+  <a-entity gltf-model="#ship" 
+            position="2.201 -8.009 -1.106"
+            rotation="-0.723 41.804 22.399"
+            scale="3 3 3"
+            mixin="music"
+            static-body>
+  </a-entity>
 </a-scene>
 
 <script type="text/javascript" charset="utf-8" async defer>
@@ -262,59 +428,31 @@
       var position = cannon.getAttribute('position');
       // Physical Beam
       var beam = document.createElement("a-sphere");
+      beam.setAttribute('position', '0 -1 0');
       beam.setAttribute('dynamic-body', true);
       beam.setAttribute('beam', true);
-      beam.setAttribute('position', '0 -1 0');
+      beam.setAttribute('mixin', 'laser');
       beam.setAttribute('color', 'crimson');
       beam.setAttribute('radius', '0.24');
-      // Shooting animation
-      var velo = document.createElement("a-animation");
-      velo.setAttribute('attribute', 'position');
-      velo.setAttribute('to', '0 -500 0');
-      velo.setAttribute('direction', 'normal');
-      velo.setAttribute('dur', '500')
-    
-      beam.appendChild(velo);
-
+      beam.setAttribute('mixin', 'laser');
+      
       return beam;
     } 
     
     function fire(cannon) {
       cannon.appendChild(makeBeam(cannon));
     }
-    
-    function spawnInvader() {
-      var positions = ['-3 3 0', '3 3 0', '-2 2 0', '2 2 0', '-3 1 0' ,'-2 1 0' ,'-1 1 0', '0 1 0', '1 1 0', '2 1 0', '3 1 0', '-4 0 0', '-3 0 0', '-1 0 0', '0 0 0', '1 0 0', '3 0 0', '4 0 0', '-5 -1 0', '-4 -1 0', '-3 -1 0', '-2 -1 0', '-1 -1 0', '0 -1 0', '1 -1 0', '2 -1 0', '3 -1 0', '4 -1 0', '5 -1 0', '-5 -2 0', '-3 -2 0', '-2 -2 0', '-1 -2 0', '0 -2 0', '1 -2 0', '2 -2 0', '3 -2 0', '5 -2 0', '-5 -3 0', '-3 -3 0', '3 -3 0', '5 -3 0', '-2 -4 0', '-1 -4 0', '1 -4 0', '2 -4 0'];
-
-      var invader = document.createElement("a-entity");
-      invader.setAttribute('position', '0 0 -500');
-      invader.setAttribute('static-body', true);
-      invader.setAttribute('invader', true);
-      
-      positions.forEach(function(pos) {
-        var flesh = document.createElement("a-box");
-        flesh.setAttribute('color', 'tomato');
-        flesh.setAttribute('position', pos);
-        flesh.setAttribute('height', '1');
-        flesh.setAttribute('depth', '1');
-        flesh.setAttribute('width', '1');
-        invader.appendChild(flesh);
-      });
-
-      scene.appendChild(invader);
-    }
 
     function shootGun(evt) {
-      if (evt.code == "KeyA") fire(cannon1);
-      if (evt.code == "KeyS") fire(cannon2);
-      if (evt.code == "Space") spawnInvader();
+      if (evt.code == "KeyS") fire(cannon1);
+      if (evt.code == "KeyA") fire(cannon2);
     };
 
     var master = document.querySelector('[game-master]');
 
     document.querySelector('[start-button]').addEventListener('collide', function() {
       document.querySelector('#menu').setAttribute('trash', true);
-      master.components["game-master"].start();
+      master.components["game-master"].newGame();
     });
 
     document.addEventListener('keypress', shootGun); 
