@@ -30,6 +30,21 @@
       }
     });
 
+    AFRAME.registerComponent('cannon', {
+      fire: function() {
+        // Physical Beam
+        var beam = document.createElement("a-sphere");
+        beam.setAttribute('position', '0 -1 0');
+        beam.setAttribute('dynamic-body', true);
+        beam.setAttribute('beam', true);
+        beam.setAttribute('radius', '0.24');
+        beam.setAttribute('color', '#5CE83C');
+        beam.setAttribute('metalness', '1');
+
+        this.el.appendChild(beam);
+      }
+    });
+
     AFRAME.registerComponent('level', {
       schema: {
         level: { type: 'number' }
@@ -163,6 +178,9 @@
           new CANNON.Vec3(0, 0, 0)
         );
       },
+      fire: function(cannon) {
+        // body...
+      },
       score: function() {
         this.dataset.hit = true;
         this.sceneEl.components['game-master'].scorePoint();
@@ -258,13 +276,11 @@
     <a-mixin id="metal" material="src:url(images/riveted-metal.jpg); color: #696969; roughness: 1; metalness: 0.5"></a-mixin>
     
     <a-mixin id="music" 
-             sound="src:url(audio/intro-menu-music.wav);autoplay:true;loop:true;"
-             preload="auto"></a-mixin>
+             sound="src:url(audio/intro-menu-music.wav);autoplay:true;loop:true;"></a-mixin>
 
     <a-mixin id="laser" 
              sound="src:url(audio/laser-shot.wav);autoplay:true;" 
-             material="src:url(images/green-metal.jpg);color:#5CE83C;metalness:1;emissive:#5CE83C;emissiveIntensity:0.75;"
-             preload="auto"></a-mixin>
+             material="color:#5CE83C;metalness:1;"></a-mixin>
   </a-assets>
 
   <a-entity position="0 10 -10" light="type:point; color: #FFF; groundColor: #3C3; intensity: 1"></a-entity>
@@ -275,16 +291,19 @@
 
   <a-camera look-controls position="0 0 0" wasd-controls-enabled="false">
     <a-cursor material="color:red;">
-      <a-cylinder mixin="metal" id="cannon2" position="-1.5 -0.5 0" rotation="90 0 0" radius="0.25" height="3" color="#FFC65D">
+      <a-cylinder cannon mixin="metal" id="cannon2" position="-1.5 -0.5 0" rotation="90 0 0" radius="0.25" height="3" color="#FFC65D">
         <a-cylinder mixin="metal" radius="0.3" height="0.5" color="#FFC65D"></a-cylinder> 
         <a-cylinder mixin="metal" radius="0.275" height="0.5" color="#FFC65D" position="0 -1.25 0"></a-cylinder> 
       </a-cylinder>
-      <a-cylinder mixin="metal" id="cannon1" position="1.5 -0.5 0" rotation="90 0 0" radius="0.25" height="3" color="#FFC65D">
+      <a-cylinder cannon mixin="metal" id="cannon1" position="1.5 -0.5 0" rotation="90 0 0" radius="0.25" height="3" color="#FFC65D">
         <a-cylinder mixin="metal" radius="0.3" height="0.5" color="#FFC65D"></a-cylinder>
         <a-cylinder mixin="metal" radius="0.275" height="0.5" color="#FFC65D" position="0 -1.25 0"></a-cylinder>
       </a-cylinder>
     </a-cursor>
   </a-camera>
+
+  <a-entity id="left" windows-motion-controls="hand: left"></a-entity>
+  <a-entity id="right" windows-motion-controls="hand: right"></a-entity>
 
   <a-curve id="track1">
       <a-curve-point position="-100 100 -500"></a-curve-point>
@@ -424,28 +443,9 @@
     var cannon1 = document.querySelector('#cannon1');
     var cannon2 = document.querySelector('#cannon2');
 
-    function makeBeam(cannon) {
-      var position = cannon.getAttribute('position');
-      // Physical Beam
-      var beam = document.createElement("a-sphere");
-      beam.setAttribute('position', '0 -1 0');
-      beam.setAttribute('dynamic-body', true);
-      beam.setAttribute('beam', true);
-      beam.setAttribute('mixin', 'laser');
-      beam.setAttribute('color', 'crimson');
-      beam.setAttribute('radius', '0.24');
-      beam.setAttribute('mixin', 'laser');
-      
-      return beam;
-    } 
-    
-    function fire(cannon) {
-      cannon.appendChild(makeBeam(cannon));
-    }
-
     function shootGun(evt) {
-      if (evt.code == "KeyS") fire(cannon1);
-      if (evt.code == "KeyA") fire(cannon2);
+      if (evt.target.id == 'left') cannon2.components['cannon'].fire();
+      if (evt.target.id == 'right') cannon1.components['cannon'].fire();
     };
 
     var master = document.querySelector('[game-master]');
@@ -455,6 +455,6 @@
       master.components["game-master"].newGame();
     });
 
-    document.addEventListener('keypress', shootGun); 
+    document.addEventListener('triggerdown', shootGun); 
   })();
 </script>
